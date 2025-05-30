@@ -1,0 +1,280 @@
+name: 🚀 Compile ESP32 Firmware
+
+on:
+  push:
+    branches:
+      - 'release/*'
+  pull_request:
+    branches:
+      - 'release/*'
+  workflow_dispatch:
+    inputs:
+      debug_enabled:
+        description: 'Enable debug mode'
+        type: boolean
+        default: false
+
+# Prevent multiple concurrent runs for the same branch
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+# Define minimal required permissions
+permissions:
+  contents: read
+  actions: read
+  pull-requests: write
+
+env:
+  # Build configuration
+  ESP32_BOARD: esp32c6
+  ESP32_FQBN: esp32:esp32:esp32c6:PartitionScheme=zigbee,ZigbeeMode=ed
+  BUILD_PATH: ./build
+  SKETCH_PATH: ./main.ino
+  CONFIG_FILE: ./ci.json
+  PYTHON_VERSION: '3.11'
+  ARDUINO_CLI_VERSION: '0.35.3'
+
+jobs:
+  compile:
+    name: 🔨 Compile Firmware
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    
+    outputs:
+      firmware-artifact: ${{ steps.package.outputs.artifact-name }}
+      build-status: ${{ steps.compile.outcome }}
+      package-size: ${{ steps.package.outputs.package-size }}
+    
+    steps:
+    - name: 📂 Checkout repository
+      uses: actions/checkout@v4
+      with:
+        # Fetch full history for better build information
+        fetch-depth: 0
+
+    - name: 🐍 Setup Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+        cache: 'pip'
+
+    - name: 📦 Cache Python dependencies
+      uses: actions/cache@v4
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+
+    - name: 🔧 Install Python dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install esptool
+
+    - name: 🛠️ Setup Arduino CLI
+      uses: arduino/setup-arduino-cli@v1.1.2
+      with:
+        version: ${{ env.ARDUINO_CLI_VERSION }}
+
+    - name: 📱 Cache Arduino cores
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.arduino15/packages
+          ~/.arduino15/staging
+        key: ${{ runner.os }}-arduino-cores-${{ hashFiles('**/*.json') }}
+        restore-keys: |
+          ${{ runner.os }}-arduino-cores-
+
+    - name: 🔄 Install ESP32 core
+      run: |
+        arduino-cli core update-index --config-file ${{ env.CONFIG_FILE }}
+        arduino-cli core install esp32:esp32 --config-file ${{ env.CONFIG_FILE }}
+
+    - name: 📋 Verify installation
+      run: |
+        echo "Arduino CLI version:"
+        arduino-cli version
+        echo ""
+        echo "Installed cores:"
+        arduino-cli core list --config-file ${{ env.CONFIG_FILE }}
+        echo ""
+        echo "Available boards for ESP32C6:"
+        arduino-cli board listall esp32c6 --config-file ${{ env.CONFIG_FILE }}
+
+    - name: 🏗️ Compile sketch
+      id: compile
+      run: |
+        echo "Compiling firmware for ${{ env.ESP32_BOARD }}..."
+        arduino-cli compile \
+          --fqbn ${{ env.ESP32_FQBN }} \
+          --build-path ${{ env.BUILD_PATH }} \
+          --config-file ${{ env.CONFIG_FILE }} \
+          --verbose \
+          ${{ env.SKETCH_PATH }}
+        
+        echo "Compilation completed successfully!"
+
+    - name: 📊 Analyze build artifacts
+      id: analyze
+      run: |
+        BUILD_DIR="${{ env.BUILD_PATH }}/esp32.esp32.${{ env.ESP32_BOARD }}"
+        
+        if [ ! -d "$BUILD_DIR" ]; then
+          echo "❌ Build directory not found: $BUILD_DIR"
+          exit 1
+        fi
+        
+        echo "📁 Build artifacts found:"
+        ls -la "$BUILD_DIR"
+        
+        # Count and analyze files
+        BIN_COUNT=$(find "$BUILD_DIR" -name "*.bin" | wc -l)
+        ELF_COUNT=$(find "$BUILD_DIR" -name "*.elf" | wc -l)
+        MAP_COUNT=$(find "$BUILD_DIR" -name "*.map" | wc -l)
+        
+        echo "bin_count=$BIN_COUNT" >> $GITHUB_OUTPUT
+        echo "elf_count=$ELF_COUNT" >> $GITHUB_OUTPUT
+        echo "map_count=$MAP_COUNT" >> $GITHUB_OUTPUT
+        
+        # Calculate total size
+        TOTAL_SIZE=$(du -sh "$BUILD_DIR" | cut -f1)
+        echo "total_size=$TOTAL_SIZE" >> $GITHUB_OUTPUT
+
+    - name: 📦 Create firmware package
+      id: package
+      run: |
+        BUILD_DIR="${{ env.BUILD_PATH }}/esp32.esp32.${{ env.ESP32_BOARD }}"
+        TIMESTAMP=$(date +%Y%m%d-%H%M%S)
+        SHORT_SHA=$(echo ${{ github.sha }} | cut -c1-8)
+        ARTIFACT_NAME="esp32c6-firmware-${SHORT_SHA}-${TIMESTAMP}"
+        ZIP_FILE="${ARTIFACT_NAME}.zip"
+        
+        if [ -d "$BUILD_DIR" ]; then
+          echo "📦 Creating firmware package: $ZIP_FILE"
+          cd "$BUILD_DIR"
+          
+          # Create ZIP with proper compression
+          zip -9 -r "../../$ZIP_FILE" \
+            *.bin *.elf *.map \
+            -x "*.o" "*.d" "*.tmp" 2>/dev/null || {
+              echo "❌ Failed to create ZIP package"
+              exit 1
+            }
+          
+          cd ../..
+          
+          if [ -f "$ZIP_FILE" ]; then
+            PACKAGE_SIZE=$(du -h "$ZIP_FILE" | cut -f1)
+            echo "✅ Package created successfully: $ZIP_FILE ($PACKAGE_SIZE)"
+            
+            # Set outputs
+            echo "artifact-name=$ARTIFACT_NAME" >> $GITHUB_OUTPUT
+            echo "package-size=$PACKAGE_SIZE" >> $GITHUB_OUTPUT
+            echo "zip-file=$ZIP_FILE" >> $GITHUB_OUTPUT
+          else
+            echo "❌ Package creation failed"
+            exit 1
+          fi
+        else
+          echo "❌ Build directory not found, cannot create package"
+          exit 1
+        fi
+
+    - name: 🔍 Debug information
+      if: ${{ github.event.inputs.debug_enabled == 'true' }}
+      run: |
+        echo "=== Debug Information ==="
+        echo "Working directory: $(pwd)"
+        echo "Environment variables:"
+        env | grep -E "(GITHUB_|ESP32_|BUILD_|SKETCH_)" | sort
+        echo "File system:"
+        find . -type f -name "*.bin" -o -name "*.elf" -o -name "*.map" 2>/dev/null || echo "No firmware files found"
+
+    - name: ⬆️ Upload firmware artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ steps.package.outputs.artifact-name }}
+        path: ${{ steps.package.outputs.zip-file }}
+        retention-days: 30
+        compression-level: 0  # Already compressed as ZIP
+
+    - name: 📝 Generate build summary
+      if: always()
+      run: |
+        # Build status emoji
+        if [ "${{ steps.compile.outcome }}" == "success" ]; then
+          STATUS_EMOJI="✅"
+          STATUS_TEXT="successful"
+        else
+          STATUS_EMOJI="❌"
+          STATUS_TEXT="failed"
+        fi
+        
+        {
+          echo "## 🚀 ESP32C6 Firmware Build Summary"
+          echo ""
+          echo "$STATUS_EMOJI **Compilation $STATUS_TEXT!**"
+          echo ""
+          echo "### 📋 Build Information"
+          echo "- **Board:** ${{ env.ESP32_BOARD }}"
+          echo "- **FQBN:** \`${{ env.ESP32_FQBN }}\`"
+          echo "- **Commit:** \`${{ github.sha }}\`"
+          echo "- **Branch:** \`${{ github.ref_name }}\`"
+          echo "- **Triggered by:** ${{ github.event_name }}"
+          echo "- **Build time:** $(date --utc --iso-8601=seconds)"
+          
+          if [ "${{ steps.compile.outcome }}" == "success" ]; then
+            echo ""
+            echo "### 📦 Generated Package"
+            echo "- **Package:** \`${{ steps.package.outputs.artifact-name }}.zip\`"
+            echo "- **Size:** ${{ steps.package.outputs.package-size }}"
+            echo "- **Build artifacts size:** ${{ steps.analyze.outputs.total_size }}"
+            echo ""
+            echo "### 📊 File Count"
+            echo "- **Binary files (.bin):** ${{ steps.analyze.outputs.bin_count }}"
+            echo "- **Executable files (.elf):** ${{ steps.analyze.outputs.elf_count }}"
+            echo "- **Map files (.map):** ${{ steps.analyze.outputs.map_count }}"
+          fi
+          
+          echo ""
+          echo "### 📥 Download"
+          if [ "${{ steps.compile.outcome }}" == "success" ]; then
+            echo "The compiled firmware is available as a ZIP package in this workflow run's artifacts."
+          else
+            echo "Build failed. Check the workflow logs for details."
+          fi
+          
+          echo ""
+          echo "---"
+          echo "*Generated by GitHub Actions on $(date --utc --iso-8601=seconds)*"
+        } >> $GITHUB_STEP_SUMMARY
+
+  notify:
+    name: 📢 Notification
+    runs-on: ubuntu-latest
+    needs: compile
+    if: always()
+    timeout-minutes: 5
+    
+    steps:
+    - name: 📊 Build status notification
+      run: |
+        if [ "${{ needs.compile.result }}" == "success" ]; then
+          echo "✅ ESP32C6 firmware build completed successfully!"
+          echo "📦 Artifact: ${{ needs.compile.outputs.firmware-artifact }}"
+          echo "📏 Package size: ${{ needs.compile.outputs.package-size }}"
+          echo "🌿 Branch: ${{ github.ref_name }}"
+        elif [ "${{ needs.compile.result }}" == "failure" ]; then
+          echo "❌ ESP32C6 firmware build failed!"
+          echo "🌿 Branch: ${{ github.ref_name }}"
+          echo "🔗 Check the workflow run for details: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          exit 1
+        elif [ "${{ needs.compile.result }}" == "cancelled" ]; then
+          echo "⏹️ ESP32C6 firmware build was cancelled"
+          exit 1
+        else
+          echo "⚠️ ESP32C6 firmware build completed with unknown status: ${{ needs.compile.result }}"
+          exit 1
+        fi 
