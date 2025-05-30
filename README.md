@@ -1,273 +1,468 @@
-# AlvarosDev - Sensor de Temperatura y Humedad Zigbee (HumiTempSensor)
+# Temperature Humidity Zigbee End Device
 
-Este proyecto está **basado en el ejemplo oficial de Zigbee Temperature Sensor para ESP32-C6** de Espressif, pero incluye **modificaciones propias significativas** para implementar un sensor de temperatura y humedad real usando el sensor SHT4x, con funcionalidades avanzadas de gestión de energía y validación de datos.
+A temperature and humidity sensor based on ESP32-C6 with Zigbee connectivity, designed as an End Device.
 
-## 🚀 Características Propias Implementadas
+## Features
 
-### Modificaciones sobre el ejemplo base:
-- **Sensor real SHT4x**: Reemplaza la lectura de temperatura interna del chip por un sensor SHT4x de alta precisión
-- **Dual sensing**: Implementación completa de temperatura Y humedad (el ejemplo original solo manejaba temperatura)
-- **Gestión avanzada de energía**: Sistema de deep sleep configurable con wake-up por timer
-- **Validación de datos**: Verificación de rangos válidos y detección de lecturas NaN
-- **Factory Reset**: Funcionalidad de reset por botón (10 segundos presionado)
-- **Configuración personalizada**: Parámetros organizados y documentados para fácil modificación
-- **Manejo de errores robusto**: Reintentos y recuperación ante fallos
-- **Logging detallado**: Sistema de debug con emojis y formato estructurado
+- **Sensor**: SHT40 for temperature and humidity measurement
+- **Connectivity**: Zigbee 3.0 as End Device
+- **Microcontroller**: ESP32-C6
+- **Power Mode**: Deep Sleep to maximize battery life
+- **Compatibility**: Arduino CLI and Arduino IDE
 
-## 🎯 Funcionalidades del Sensor
+## Project Structure
 
-1. **Medición precisa**: Temperatura y humedad usando sensor SHT4x con alta precisión
-2. **Conectividad Zigbee**: Reporta datos como dispositivo end-device en red Zigbee HA
-3. **Ahorro de energía**: Modo deep sleep entre lecturas (configurable)
-4. **Auto-recuperación**: Manejo de fallos de conexión y reinicio automático
-5. **Configuración flexible**: Parámetros fácilmente modificables
-
-# Objetivos Cumplidos
-
-| Supported Targets | ESP32-C6 | ESP32-H2 |
-| ----------------- | -------- | -------- |
-
-## 🔧 Hardware Requerido
-
-* **ESP32-C6** development board (recomendado)
-* **Sensor SHT4x** (SHT40, SHT41, SHT45)
-* Conexiones I2C:
-  - SDA: GPIO 1
-  - SCL: GPIO 2
-* Cable USB para alimentación y programación
-
-## ⚙️ Configuración del Proyecto
-
-### Configuración de Hardware
-- **Sensor SHT4x**: Conectado por I2C (pines 1 y 2)
-- **Botón**: Utiliza el botón BOOT para factory reset
-- **Precisión**: Configurado en modo HIGH_PRECISION
-- **Heater**: Deshabilitado por defecto
-
-### Parámetros Configurables (en el código)
-```cpp
-#define TIME_TO_SLEEP 60              // Tiempo de sleep en segundos
-#define ENABLE_SLEEP true             // Habilitar/deshabilitar deep sleep
-#define TEMP_MIN -40.0               // Rango mínimo temperatura
-#define TEMP_MAX 125.0               // Rango máximo temperatura
-#define HUMIDITY_MIN 0.0             // Rango mínimo humedad
-#define HUMIDITY_MAX 100.0           // Rango máximo humedad
-```
-
-### Configuración en Arduino IDE
-
-1. **Seleccionar placa**: `Tools -> Board -> ESP32-C6 Dev Module`
-2. **Modo Zigbee**: `Tools -> Zigbee mode: Zigbee ED (end device)`
-3. **Partición**: `Tools -> Partition Scheme: Zigbee 4MB with spiffs`
-4. **Puerto**: `Tools -> Port: xxx` (puerto COM detectado)
-5. **Debug opcional**: `Tools -> Core Debug Level: Verbose`
-
-### Dependencias Requeridas
-```json
-// Librerías necesarias (instalar desde Library Manager)
-- Adafruit SHT4x Library
-- Zigbee Library (incluida en ESP32 core)
-```
-
-## 🔄 Funcionamiento
-
-1. **Inicialización**: Configura sensor SHT4x y stack Zigbee
-2. **Conexión**: Se conecta automáticamente a la red Zigbee
-3. **Lectura**: Lee temperatura y humedad del sensor SHT4x
-4. **Validación**: Verifica que los datos estén en rangos válidos
-5. **Reporte**: Envía datos a la red Zigbee como dispositivo HA
-6. **Sleep**: Entra en deep sleep por el tiempo configurado
-7. **Repetición**: Wake-up automático y repetición del ciclo
-
-## 🛠️ Solución de Problemas
-
-### Conexión Zigbee
-Si el dispositivo no se conecta al coordinador:
-* Borra la flash: `Tools -> Erase All Flash Before Sketch Upload: Enabled`
-* Agrega `Zigbee.factoryReset();` al código para reset completo
-* Verifica que la red del coordinador esté abierta
-
-### Sensor SHT4x
-* **Error "SHT4x sensor not found"**: Verifica conexiones I2C (pines 1 y 2)
-* **Datos inválidos**: Verifica alimentación del sensor (3.3V)
-* **Lecturas erráticas**: Aumenta el tiempo de estabilización
-
-### Gestión de Energía
-* **No entra en sleep**: Verifica `ENABLE_SLEEP true` en configuración
-* **Wake-up no funciona**: Revisa configuración del timer de wake-up
-
-### Factory Reset
-* Mantén presionado el botón BOOT durante 10 segundos
-* El dispositivo mostrará mensaje de confirmación y entrará en deep sleep
-* Presiona RESET para reiniciar
-
-## 📁 Estructura del Proyecto
+This project follows the standard Arduino CLI sketch specification:
 
 ```
-AlvarosDev_HumiTempSensor/
-├── main.ino                        # Código principal
-├── README.md                        # Este archivo
-├── ci.json                         # Configuración CI
-├── flash.cmd                       # Script de flasheo original
-├── scripts/                        # Scripts de compilación y flasheo
-│   ├── compile.cmd                 # Compilar (Windows CMD)
-│   ├── flash.cmd                   # Flashear (Windows CMD)
-│   └── README.md                   # Documentación de scripts
-└── .github/
-    └── workflows/
-        └── compile-esp32.yml        # GitHub Actions CI/CD
+TemperatureHumidityZigbeeEndDevice/
+├── TemperatureHumidityZigbeeEndDevice.ino  # Main sketch (must match the folder name)
+├── sketch.yaml                             # Project configuration file (arduino-cli)
+├── Makefile                                # Build and deploy automation
+├── scripts/                                # Auxiliary scripts and tools
+│   ├── setup.sh                           # Environment setup script
+│   └── flash.sh                           # Flashing script for Linux/macOS
+├── data/                                   # Sketch data files (optional)
+├── src/                                    # Additional source files (optional)
+├── build/                                  # Compiled files directory (generated)
+├── TOOLS.md                               # Tools documentation
+└── README.md                              # This file
 ```
 
-## 🚀 Scripts de Compilación y Flasheo
+## Scripts and Auxiliary Tools
 
-Este proyecto incluye scripts automatizados para facilitar el desarrollo:
+The `scripts/` folder contains auxiliary scripts and tools for development, compilation, and deployment of the ESP32-C6 Temperature Humidity Zigbee End Device project.
 
-### Compilación Local
-```cmd
-# Windows CMD
-scripts\compile.cmd
+### Setup Scripts
+
+#### `scripts/setup.sh`
+Initial development environment configuration script for Unix-like systems (Linux/macOS).
+
+**Features:**
+- Automatically installs Arduino CLI
+- Configures ESP32 core version 3.2.0
+- Installs all required libraries:
+  - Adafruit SHT4x Library
+  - Adafruit BusIO
+  - Adafruit Unified Sensor
+- Installs esptool.py for optimized flashing
+- Configures user permissions for serial ports
+
+**Usage:**
+```bash
+chmod +x scripts/setup.sh
+./scripts/setup.sh
 ```
 
-### Flasheo Local
-```cmd
-# Windows CMD (después de compilar)
-scripts\flash.cmd
+**Makefile equivalent:**
+```bash
+make setup
 ```
 
-### Compilación y Flasheo en un Solo Comando
-```cmd
-# Windows CMD - compila y flashea automáticamente
-scripts\build-and-flash.cmd
+### Deployment Scripts
+
+#### `scripts/flash.sh`
+Compilation and flashing script for Unix-like systems (Linux/macOS).
+
+**Features:**
+- Compiles the sketch using arduino-cli
+- Automatically detects connection port
+- Flashes to ESP32-C6 with optimized configuration
+- Includes debug and logging options
+
+**Usage:**
+```bash
+chmod +x scripts/flash.sh
+./scripts/flash.sh
 ```
 
-### Prerrequisitos para Scripts Locales
-- **Arduino CLI**: Instalar desde [arduino.github.io/arduino-cli](https://arduino.github.io/arduino-cli/)
-- **Python 3.x**: Para esptool (se instala automáticamente si no está presente)
-- **Core ESP32**: Se instala automáticamente la primera vez
+**Makefile equivalent:**
+```bash
+make deploy
+```
 
-### CI/CD con GitHub Actions
-El proyecto incluye integración continua que se activa automáticamente:
-- **Trigger**: Push a ramas `release/*`
-- **Acciones**: Compilación automática en Ubuntu
-- **Artefactos**: Archivos `.bin`, `.elf`, y `.map` disponibles para descarga
-- **Duración**: Los artefactos se mantienen 30 días
+### Centralized Configuration
 
-Para más detalles sobre los scripts, consulta [`scripts/README.md`](scripts/README.md).
+> 📝 **Note**: Previously there was a `ci.json` file in this folder, but it has been **consolidated into `sketch.yaml`** following Arduino CLI best practices.
 
-## 🌟 Créditos y Base
+All project configuration is now centralized in `sketch.yaml` at the project root:
 
-**Proyecto base**: Arduino-ESP32 Zigbee Temperature Sensor Example (Espressif)
-**Desarrollador**: AlvarosDev
-**Modificaciones**: Implementación de sensor real SHT4x, gestión de energía avanzada, validación de datos y mejoras en estabilidad
+```yaml
+profiles:
+  zigbee_enddevice:
+    # Board options for Zigbee End Device
+    board_options:
+      PartitionScheme: "zigbee"
+      ZigbeeMode: "ed"
 
-## 📚 Recursos y Referencias
+    # Build properties for Zigbee configuration
+    build_properties:
+      - "compiler.cpp.extra_flags=-DCONFIG_SOC_IEEE802154_SUPPORTED=1"
+      - "compiler.cpp.extra_flags=-DCONFIG_ZB_ENABLED=1"
+      - "compiler.cpp.extra_flags=-DZIGBEE_MODE_ED=1"
+```
 
-* [Arduino-ESP32 Official Repository](https://github.com/espressif/arduino-esp32)
-* [ESP32-C6 Datasheet](https://www.espressif.com/sites/default/files/documentation/esp32-c6_datasheet_en.pdf)
-* [Adafruit SHT4x Library](https://github.com/adafruit/Adafruit_SHT4X)
-* [Official ESP32 Forum](https://esp32.com)
-* [ESP-IDF Documentation](https://idf.espressif.com)
+**Consolidation advantages:**
+- ✅ **Single configuration file**: All configuration in `sketch.yaml`
+- ✅ **Fewer files**: Simplifies the project
+- ✅ **Arduino CLI standard**: Follows official best practices
+- ✅ **Easy maintenance**: Single place to change configurations
 
-## 🤝 Contribuciones
+### Migration from Root
 
-Si encuentras algún problema o tienes sugerencias de mejora, por favor:
-1. Revisa la sección de solución de problemas
-2. Busca issues similares en el repositorio base
-3. Crea un nuevo issue con detalles específicos
+Scripts were moved from project root to this folder following organization best practices:
 
----
-**Nota**: Este proyecto demuestra la implementación práctica de un sensor IoT Zigbee con gestión eficiente de energía, ideal para aplicaciones de monitoreo ambiental domótico.
+**Before:**
+```
+TemperatureHumidityZigbeeEndDevice/
+├── setup.sh
+├── flash.sh
+├── ci.json              # ❌ Redundant
+└── ...
+```
 
-## 🛠️ Compilación y Flasheo
+**After:**
+```
+TemperatureHumidityZigbeeEndDevice/
+├── sketch.yaml          # ✅ Consolidated configuration
+├── scripts/
+│   ├── setup.sh
+│   └── flash.sh
+└── ...
+```
 
-### Opción 1: Makefile (Recomendado para Linux/macOS)
+### Recommended Alternatives
+
+#### 1. Makefile (Most recommended)
+The project includes an optimized Makefile that replaces the need to run individual scripts:
 
 ```bash
-# Mostrar todas las opciones disponibles
+make setup     # Replaces ./scripts/setup.sh
+make deploy    # Replaces ./scripts/flash.sh
+make flash     # Flashing with esptool.py (faster)
+make build     # Compile only
+make monitor   # Serial monitor
+```
+
+#### 2. Arduino CLI + esptool.py (For advanced users)
+```bash
+# Compile using consolidated profile
+arduino-cli compile --profile zigbee_enddevice --export-binaries .
+
+# Flash with esptool.py
+esptool.py --chip esp32c6 --port /dev/ttyUSB0 --baud 921600 \
+    --before default_reset --after hard_reset write_flash \
+    --flash_mode dio --flash_freq 80m --flash_size 8MB \
+    0x0 build/esp32.esp32.esp32c6/TemperatureHumidityZigbeeEndDevice.ino.merged.bin
+```
+
+### Scripts Troubleshooting
+
+**Scripts not executable:**
+```bash
+chmod +x scripts/*.sh
+```
+
+**Serial port permission errors (Linux):**
+```bash
+sudo usermod -a -G dialout $USER
+# Restart session
+```
+
+**Arduino CLI not found:**
+```bash
+# The setup.sh script handles automatic installation
+./scripts/setup.sh
+
+# Or manual installation
+curl -fsSL https://raw.githubusercontent.com/arduino/arduino-cli/master/install.sh | sh
+```
+
+**esptool.py not found:**
+```bash
+pip install esptool
+# Or use setup script
+./scripts/setup.sh
+```
+
+### Scripts Compatibility
+
+- **setup.sh**: Linux, macOS, WSL
+- **flash.sh**: Linux, macOS, WSL
+
+### Scripts Recommendations
+
+1. **For daily development**: Use `make deploy`
+2. **For initial setup**: Use `make setup` or `./scripts/setup.sh`
+3. **For CI/CD**: Use make commands with configuration from `sketch.yaml`
+4. **For debugging**: Individual scripts can be useful for step-by-step debugging
+
+## Compilation and Deployment
+
+### Option 1: Makefile (Recommended)
+
+The project includes an optimized Makefile that uses `sketch.yaml` and `esptool.py` to facilitate development:
+
+```bash
+# View all available options
 make help
 
-# Configurar entorno automáticamente
-make setup
+# Typical development workflow
+make setup              # Configure initial environment
+make validate-sketch    # Validate configuration
+make build              # Compile using zigbee_enddevice profile (cleans automatically)
+make flash              # Flash to ESP32-C6 with esptool.py
+make monitor            # Start serial monitor
 
-# Compilar proyecto
-make build
-
-# Flashear ESP32
-make flash
-
-# Compilar y flashear en un paso
+# Compile and flash in a single command
 make deploy
 
-# Monitor serie
-make monitor
-
-# Limpiar archivos de build
+# Clean build files manually
 make clean
 ```
 
-### Opción 2: Scripts Shell Unix
+**Makefile Advantages:**
+- ✅ Automatically uses the `zigbee_enddevice` profile from `sketch.yaml`
+- ✅ Includes all dependencies automatically
+- ✅ **Automatic cleaning**: Cleans the `build/` directory before each compilation
+- ✅ **esptool.py integrated**: Optimized flashing for ESP32-C6
+- ✅ Automatically detects ports
+- ✅ Automatically exports binaries
+- ✅ Integrated configuration validation
+
+**Available flashing options:**
+```bash
+make flash              # Flash complete firmware (.merged.bin) - Recommended
+make flash-individual   # Flash individual files (bootloader, partitions, app)
+```
+
+### Option 2: Arduino CLI + direct esptool.py
 
 ```bash
-# Configuración inicial
+# Compile using the profile defined in sketch.yaml
+arduino-cli compile --profile zigbee_enddevice --board-options "ZigbeeMode=ed,PartitionScheme=zigbee" --export-binaries .
+
+# Flash using esptool.py (recommended for ESP32-C6)
+esptool.py --chip esp32c6 --port /dev/ttyUSB0 --baud 921600 erase_flash
+esptool.py --chip esp32c6 --port /dev/ttyUSB0 --baud 921600 \
+    --before default_reset --after hard_reset write_flash \
+    --flash_mode dio --flash_freq 80m --flash_size 8MB \
+    0x0 build/esp32.esp32.esp32c6/TemperatureHumidityZigbeeEndDevice.ino.merged.bin
+
+# Upload using arduino-cli (alternative)
+arduino-cli upload --profile zigbee_enddevice --port /dev/ttyUSB0 .
+```
+
+### Option 3: Traditional Scripts
+
+```bash
+# Linux/macOS
+chmod +x scripts/setup.sh scripts/flash.sh
 ./scripts/setup.sh
-
-# Desarrollo
-./scripts/build.sh
 ./scripts/flash.sh
-./scripts/build-and-flash.sh
 ```
 
-## 📋 Prerrequisitos
+## Development Setup
 
-Los scripts de configuración (`make setup` o `scripts/setup.sh`) instalan automáticamente las dependencias. Manual:
-
-- **Arduino CLI**: Herramienta de línea de comandos de Arduino
-- **Python 3**: Para esptool (flasheo del ESP32)
-- **Core ESP32**: Soporte para placas ESP32 en Arduino CLI
-
-## 📁 Estructura del Proyecto
-
-```
-├── main.ino              # Código principal del sensor
-├── ci.json               # Configuración del ESP32C6
-├── Makefile              # Build system para Linux/macOS
-├── build/                # Archivos compilados (generado)
-└── scripts/              # Scripts de compilación y flasheo
-    ├── README.md         # Documentación de scripts
-    ├── setup.sh          # Configuración automática
-    ├── build.sh          # Compilar
-    ├── flash.sh          # Flashear
-    └── build-and-flash.sh   # Todo en uno
-```
-
-## ⚙️ Configuración del Hardware
-
-- **Placa**: ESP32C6
-- **Configuración**: Zigbee End Device
-- **Partición**: zigbee
-- **Sensor**: [Especificar sensor de humedad y temperatura usado]
-
-## 🔧 Desarrollo
-
-### Comandos Frecuentes
+### 1. Automatic Setup (Recommended)
 
 ```bash
-# Con Makefile
-make deploy        # Compilar y flashear
-make monitor       # Ver salida del sensor
-make clean         # Limpiar build
-
-# Con scripts
-./scripts/build-and-flash.sh    # Compilar y flashear
+make setup
 ```
 
-### Solución de Problemas
+### 2. Manual Setup
 
-- **Puerto no detectado**: `make list-ports` o `make flash PORT=/dev/ttyUSB0`
-- **Permisos en Linux**: `sudo usermod -a -G dialout $USER` (reiniciar sesión)
-- **ESP32 no responde**: Presiona BOOT mientras presionas RESET
+```bash
+# Install Arduino CLI
+curl -fsSL https://raw.githubusercontent.com/arduino/arduino-cli/master/install.sh | sh
 
-## 📖 Documentación Adicional
+# Configure Arduino CLI
+arduino-cli config init
+arduino-cli core update-index
 
-- Ver `scripts/README.md` para documentación detallada de scripts
-- Ejecutar `make help` para ver todas las opciones del Makefile
+# Install ESP32 platform
+arduino-cli core install esp32:esp32@3.2.0
+
+# Install required libraries
+arduino-cli lib install "Adafruit SHT4x Library@1.0.0"
+arduino-cli lib install "Adafruit BusIO@1.17.1"
+arduino-cli lib install "Adafruit Unified Sensor@1.1.15"
+
+# Install esptool.py
+pip install esptool
+```
+
+## sketch.yaml File
+
+The project uses a `sketch.yaml` file that defines:
+
+- **zigbee_enddevice Profile**: Optimized configuration for ESP32-C6 with Zigbee
+- **Platform**: ESP32 3.2.0 (includes native Zigbee support)
+- **Dependencies**: All necessary libraries with specific versions
+- **Automatic Export**: Binaries are exported automatically
+
+## Hardware
+
+### Required Components
+- ESP32-C6 DevKit (or compatible)
+- SHT40 Sensor
+- Connection wires
+- Breadboard (optional)
+
+### Connections
+```
+ESP32-C6    SHT40
+--------    -----
+3V3    <--> VCC
+GND    <--> GND
+GPIO8  <--> SDA
+GPIO9  <--> SCL
+```
+
+## Generated Files
+
+Compilation generates several files in `build/esp32.esp32.esp32c6/`:
+
+- **`*.merged.bin`**: **Complete firmware ready to flash (~4MB)** ⭐ **Main**
+- **`*.bin`**: Application firmware (~588KB)
+- **`*.bootloader.bin`**: Bootloader (~21KB)
+- **`*.partitions.bin`**: Partition table (~3KB)
+- **`*.elf`**: File with debug symbols (~8.3MB)
+
+> 🔥 **Important**: The `*.merged.bin` file contains the complete firmware and is recommended for flashing with esptool.py.
+
+## Flashing with esptool.py
+
+### Advantages of using esptool.py over arduino-cli upload:
+
+✅ **Better performance**: Optimized flashing speed for ESP32-C6
+✅ **Granular control**: Specific flash configuration (mode, frequency, size)
+✅ **merged.bin file**: A single file contains the entire firmware
+✅ **Full erase**: Completely cleans the flash before flashing
+✅ **Compatibility**: Works with any tool that generates merged.bin
+
+### esptool.py Configuration:
+```
+Chip: esp32c6
+Baud: 921600
+Flash Mode: dio
+Flash Frequency: 80MHz
+Flash Size: 8MB
+```
+
+## Features
+
+### SHT40 Sensor
+- Temperature range: -40°C to +125°C
+- Humidity range: 0-100% RH
+- Accuracy: ±0.2°C, ±1.8% RH
+- Interface: I2C
+
+### Zigbee 3.0 End Device
+- Protocol: Zigbee 3.0
+- Mode: End Device (ED)
+- Sleepy Device: Yes (for power saving)
+- Mesh network: Full support
+
+### Power Management
+- Deep Sleep between readings
+- Configurable periodic wake-up
+- Battery optimized
+
+## Troubleshooting
+
+### Common Errors
+
+**Error: "Zigbee.h not found"**
+```bash
+# Ensure you are using ESP32 3.2.0 or higher
+arduino-cli core install esp32:esp32@3.2.0
+```
+
+**Error: "ZIGBEE_MODE_ED not defined"**
+```bash
+# Use correct board options
+--board-options "ZigbeeMode=ed,PartitionScheme=zigbee"
+```
+
+**Error: "esptool.py not found"**
+```bash
+# Install esptool.py
+pip install esptool
+# Or use the Makefile
+make install-deps
+```
+
+**Binary files of size 0**
+```bash
+# Compilation now cleans automatically, but if problems arise:
+make clean
+make build
+```
+
+**Flashing problems**
+```bash
+# Check port
+make list-ports
+
+# Try individual flashing if merged.bin fails
+make flash-individual PORT=/dev/ttyUSB0
+
+# Monitor for debugging
+make monitor PORT=/dev/ttyUSB0
+```
+
+## Development Tools
+
+### Useful Makefile Commands
+
+```bash
+make check-deps       # Check dependencies (includes esptool.py)
+make validate-sketch  # Validate sketch.yaml
+make list-ports      # List serial ports
+make check-port      # Check detected port
+make info            # Info of generated files (highlights merged.bin)
+make show-config     # Show complete configuration (Arduino + esptool)
+make clean-cache     # Clean Arduino CLI cache
+make clean-build     # Clean only the build directory
+```
+
+### Optimized Development Workflow
+
+```bash
+# Initial setup (only once)
+make setup
+
+# Iterative development (automatic)
+make deploy    # build + flash in one command
+
+# Or step by step
+make build     # Compiles (cleans automatically)
+make flash     # Flashes with esptool.py
+make monitor   # Serial monitor
+```
+
+### Serial Monitor
+
+```bash
+# Using Makefile
+make monitor
+
+# Using Arduino CLI
+arduino-cli monitor --port /dev/ttyUSB0 --config 115200
+
+# Using esptool.py (for advanced debugging)
+python -m serial.tools.miniterm /dev/ttyUSB0 115200
+```
+
+## Contribution
+
+1. Fork the project
+2. Create a feature branch (`git checkout -b feature/new-feature`)
+3. Commit changes (`git commit -am 'Add new feature'`)
+4. Push to the branch (`git push origin feature/new-feature`)
+5. Create a Pull Request
+
+## License
+
+This project is under the MIT license. See `LICENSE` for more details. 

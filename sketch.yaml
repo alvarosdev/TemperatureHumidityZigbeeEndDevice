@@ -1,0 +1,27 @@
+# Sketch project file for TemperatureHumidityZigbeeEndDevice
+# This file defines the build configuration for the Arduino CLI
+
+# Default profile for ESP32-C6 with Zigbee End Device mode
+default_profile: zigbee_enddevice
+
+# Default configuration for Zigbee End Device
+default_fqbn: "esp32:esp32:esp32c6"
+
+# Global configuration
+sketch:
+  always_export_binaries: true
+
+profiles:
+  zigbee_enddevice:
+    notes: "ESP32-C6 based temperature and humidity sensor with Zigbee connectivity"
+    fqbn: "esp32:esp32:esp32c6"
+    
+    # Platform configuration
+    platforms:
+      - platform: "esp32:esp32 (3.2.0)"
+    
+    # Required libraries
+    libraries:
+      - "Adafruit SHT4x Library (1.0.0)"
+      - "Adafruit BusIO (1.17.1)"
+      - "Adafruit Unified Sensor (1.1.15)" 

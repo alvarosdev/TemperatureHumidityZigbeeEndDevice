@@ -2,10 +2,10 @@
 set -e
 
 echo "========================================"
-echo "Configuración del Entorno ESP32C6"
+echo "ESP32C6 Environment Setup"
 echo "========================================"
 
-# Detectar sistema operativo
+# Detect operating system
 if [[ "$OSTYPE" == "linux-gnu"* ]]; then
     OS="linux"
 elif [[ "$OSTYPE" == "darwin"* ]]; then
@@ -14,63 +14,63 @@ else
     OS="unknown"
 fi
 
-echo "Sistema detectado: $OS"
-echo "Verificando prerrequisitos..."
+echo "Detected system: $OS"
+echo "Checking prerequisites..."
 
-# Función para verificar si un comando existe
+# Function to check if a command exists
 command_exists() {
     command -v "$1" >/dev/null 2>&1
 }
 
-# 1. Verificar Arduino CLI
+# 1. Check Arduino CLI
 if command_exists arduino-cli; then
-    echo "✓ Arduino CLI ya está instalado"
+    echo "✓ Arduino CLI is already installed"
 else
-    echo "⚠ Arduino CLI no encontrado. Instalando..."
+    echo "⚠ Arduino CLI not found. Installing..."
     
     case $OS in
         "linux")
             if command_exists curl; then
                 curl -fsSL https://raw.githubusercontent.com/arduino/arduino-cli/master/install.sh | sh
-                echo "✓ Arduino CLI instalado"
-                echo "Agregando al PATH..."
+                echo "✓ Arduino CLI installed"
+                echo "Adding to PATH..."
                 export PATH="$PATH:$HOME/bin"
                 echo 'export PATH="$PATH:$HOME/bin"' >> ~/.bashrc
             else
-                echo "✗ curl no disponible. Por favor instala curl primero"
+                echo "✗ curl not available. Please install curl first"
                 echo "sudo apt-get install curl"
             fi
             ;;
         "macos")
             if command_exists brew; then
                 brew install arduino-cli
-                echo "✓ Arduino CLI instalado via Homebrew"
+                echo "✓ Arduino CLI installed via Homebrew"
             else
-                echo "⚠ Homebrew no disponible. Instalando con script oficial..."
+                echo "⚠ Homebrew not available. Installing with official script..."
                 curl -fsSL https://raw.githubusercontent.com/arduino/arduino-cli/master/install.sh | sh
                 export PATH="$PATH:$HOME/bin"
                 echo 'export PATH="$PATH:$HOME/bin"' >> ~/.zshrc
             fi
             ;;
         *)
-            echo "✗ Sistema no soportado automáticamente"
-            echo "Por favor instala Arduino CLI manualmente:"
+            echo "✗ System not automatically supported"
+            echo "Please install Arduino CLI manually:"
             echo "curl -fsSL https://raw.githubusercontent.com/arduino/arduino-cli/master/install.sh | sh"
             ;;
     esac
 fi
 
-# 2. Verificar Python
+# 2. Check Python
 if command_exists python3; then
-    echo "✓ Python3 ya está instalado"
+    echo "✓ Python3 is already installed"
 elif command_exists python; then
-    echo "✓ Python ya está instalado"
+    echo "✓ Python is already installed"
 else
-    echo "⚠ Python no encontrado. Instalando..."
+    echo "⚠ Python not found. Installing..."
     
     case $OS in
         "linux")
-            echo "Instalando Python3..."
+            echo "Installing Python3..."
             if command_exists apt-get; then
                 sudo apt-get update
                 sudo apt-get install -y python3 python3-pip
@@ -79,27 +79,27 @@ else
             elif command_exists pacman; then
                 sudo pacman -S python python-pip
             else
-                echo "✗ Gestor de paquetes no soportado"
-                echo "Por favor instala Python3 manualmente"
+                echo "✗ Package manager not supported"
+                echo "Please install Python3 manually"
             fi
             ;;
         "macos")
             if command_exists brew; then
                 brew install python3
-                echo "✓ Python3 instalado via Homebrew"
+                echo "✓ Python3 installed via Homebrew"
             else
-                echo "✗ Homebrew no disponible"
-                echo "Por favor instala Python3 desde python.org o instala Homebrew"
+                echo "✗ Homebrew not available"
+                echo "Please install Python3 from python.org or install Homebrew"
             fi
             ;;
         *)
-            echo "✗ Sistema no soportado automáticamente"
-            echo "Por favor instala Python3 manualmente"
+            echo "✗ System not automatically supported"
+            echo "Please install Python3 manually"
             ;;
     esac
 fi
 
-# 3. Verificar/instalar esptool
+# 3. Check/install esptool
 PYTHON_CMD=""
 if command_exists python3; then
     PYTHON_CMD="python3"
@@ -109,63 +109,64 @@ fi
 
 if [ -n "$PYTHON_CMD" ]; then
     if $PYTHON_CMD -c "import esptool" 2>/dev/null; then
-        echo "✓ esptool ya está instalado"
+        echo "✓ esptool is already installed"
     else
-        echo "⚠ esptool no encontrado. Instalando..."
+        echo "⚠ esptool not found. Installing..."
         if $PYTHON_CMD -m pip install esptool --user; then
-            echo "✓ esptool instalado"
+            echo "✓ esptool installed"
         else
-            echo "⚠ Error instalando esptool. Inténtalo manualmente:"
+            echo "⚠ Error installing esptool. Try manually:"
             echo "$PYTHON_CMD -m pip install esptool --user"
         fi
     fi
 fi
 
-# 4. Configurar Arduino CLI Core ESP32
+# 4. Configure Arduino CLI ESP32 Core
 if command_exists arduino-cli; then
-    echo "Configurando core ESP32..."
+    echo "Configuring ESP32 core..."
     
     if arduino-cli core update-index && arduino-cli core install esp32:esp32; then
-        echo "✓ Core ESP32 instalado/actualizado"
+        echo "✓ ESP32 core installed/updated"
     else
-        echo "⚠ Error configurando core ESP32. Inténtalo manualmente:"
+        echo "⚠ Error configuring ESP32 core. Try manually:"
         echo "arduino-cli core update-index"
         echo "arduino-cli core install esp32:esp32"
     fi
 fi
 
-# 5. Verificar permisos de puerto serie (Linux)
+# 5. Check serial port permissions (Linux)
 if [[ "$OS" == "linux" ]]; then
-    if groups | grep -q dialout; then
-        echo "✓ Usuario ya pertenece al grupo dialout"
+    # Check for both dialout (common) and uucp (Arch/Manjaro) groups
+    if groups | grep -q dialout || groups | grep -q uucp; then
+        echo "✓ User already belongs to a serial port group (dialout or uucp)"
     else
-        echo "⚠ Agregando usuario al grupo dialout para acceso al puerto serie..."
-        sudo usermod -a -G dialout "$USER"
-        echo "⚠ Por favor cierra sesión y vuelve a iniciarla para aplicar los cambios"
+        echo "⚠ Adding user to uucp group for serial port access..."
+        sudo usermod -a -G uucp "$USER"
+        echo "⚠ Please log out and log back in to apply the changes"
     fi
 fi
 
 echo ""
 echo "========================================"
-echo "Resumen de Configuración"
+echo "Setup Summary"
 echo "========================================"
 
 echo -n "Arduino CLI: "
 if command_exists arduino-cli; then 
-    echo "✓ Instalado"
+    echo "✓ Installed"
 else 
-    echo "✗ No instalado"
+    echo "✗ Not installed"
 fi
 
 echo -n "Python: "
 if command_exists python3 || command_exists python; then 
-    echo "✓ Instalado"
+    echo "✓ Installed"
 else 
-    echo "✗ No instalado"
+    echo "✗ Not installed"
 fi
 
 echo ""
-echo "Ya puedes usar los scripts de compilación y flasheo:"
+echo "You can now use the compilation and flashing scripts:"
 echo "  ./scripts/build.sh"
 echo "  ./scripts/flash.sh"
 echo "  ./scripts/build-and-flash.sh" 

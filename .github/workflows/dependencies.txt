@@ -1,3 +1,0 @@
-# Dependencies for GitHub Actions CI/CD
-esptool>=4.7.0
-pyserial>=3.5 
