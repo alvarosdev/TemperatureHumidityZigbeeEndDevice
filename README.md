@@ -111,10 +111,7 @@ AlvarosDev_HumiTempSensor/
 ├── flash.cmd                       # Script de flasheo original
 ├── scripts/                        # Scripts de compilación y flasheo
 │   ├── compile.cmd                 # Compilar (Windows CMD)
-│   ├── compile.ps1                 # Compilar (PowerShell)
 │   ├── flash.cmd                   # Flashear (Windows CMD)
-│   ├── flash.ps1                   # Flashear (PowerShell)
-│   ├── build-and-flash.cmd         # Compilar y flashear (Windows CMD)
 │   └── README.md                   # Documentación de scripts
 └── .github/
     └── workflows/
@@ -129,18 +126,12 @@ Este proyecto incluye scripts automatizados para facilitar el desarrollo:
 ```cmd
 # Windows CMD
 scripts\compile.cmd
-
-# PowerShell
-scripts\compile.ps1
 ```
 
 ### Flasheo Local
 ```cmd
 # Windows CMD (después de compilar)
 scripts\flash.cmd
-
-# PowerShell (después de compilar)
-scripts\flash.ps1
 ```
 
 ### Compilación y Flasheo en un Solo Comando

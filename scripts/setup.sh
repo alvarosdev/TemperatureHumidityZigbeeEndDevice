@@ -99,37 +99,7 @@ else
     esac
 fi
 
-# 3. Verificar PowerShell (opcional para scripts .ps1)
-if command_exists pwsh; then
-    echo "✓ PowerShell Core ya está instalado"
-else
-    echo "⚠ PowerShell Core no encontrado (opcional)"
-    case $OS in
-        "linux")
-            echo "Para instalar PowerShell Core:"
-            echo "sudo apt-get install -y powershell"
-            ;;
-        "macos")
-            echo "Para instalar PowerShell Core:"
-            echo "brew install powershell"
-            ;;
-    esac
-fi
-
-# 4. Configurar Arduino CLI Core ESP32
-if command_exists arduino-cli; then
-    echo "Configurando core ESP32..."
-    
-    if arduino-cli core update-index && arduino-cli core install esp32:esp32; then
-        echo "✓ Core ESP32 instalado/actualizado"
-    else
-        echo "⚠ Error configurando core ESP32. Inténtalo manualmente:"
-        echo "arduino-cli core update-index"
-        echo "arduino-cli core install esp32:esp32"
-    fi
-fi
-
-# 5. Verificar/instalar esptool
+# 3. Verificar/instalar esptool
 PYTHON_CMD=""
 if command_exists python3; then
     PYTHON_CMD="python3"
@@ -151,7 +121,20 @@ if [ -n "$PYTHON_CMD" ]; then
     fi
 fi
 
-# 6. Verificar permisos de puerto serie (Linux)
+# 4. Configurar Arduino CLI Core ESP32
+if command_exists arduino-cli; then
+    echo "Configurando core ESP32..."
+    
+    if arduino-cli core update-index && arduino-cli core install esp32:esp32; then
+        echo "✓ Core ESP32 instalado/actualizado"
+    else
+        echo "⚠ Error configurando core ESP32. Inténtalo manualmente:"
+        echo "arduino-cli core update-index"
+        echo "arduino-cli core install esp32:esp32"
+    fi
+fi
+
+# 5. Verificar permisos de puerto serie (Linux)
 if [[ "$OS" == "linux" ]]; then
     if groups | grep -q dialout; then
         echo "✓ Usuario ya pertenece al grupo dialout"
@@ -181,20 +164,8 @@ else
     echo "✗ No instalado"
 fi
 
-echo -n "PowerShell Core: "
-if command_exists pwsh; then 
-    echo "✓ Instalado"
-else 
-    echo "⚠ No instalado (opcional)"
-fi
-
 echo ""
 echo "Ya puedes usar los scripts de compilación y flasheo:"
 echo "  ./scripts/build.sh"
 echo "  ./scripts/flash.sh"
-echo "  ./scripts/build-and-flash.sh"
-echo ""
-echo "O con PowerShell (si está instalado):"
-echo "  pwsh scripts/build.ps1"
-echo "  pwsh scripts/flash.ps1"
-echo "  pwsh scripts/build-and-flash.ps1" 
+echo "  ./scripts/build-and-flash.sh" 
